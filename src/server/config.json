@@ -5,4 +5,7 @@
     "playerSize": 10,
     "networkUpdateFactor": 40,
     "attackDuration": 3,
+    "attackRadius": 7,
+    "bloodDuration": 10000,
+    "backSight": 10,
 }
