@@ -4,6 +4,11 @@
 
 var config = require('./config.json');
 
+exports.validNick = function(nickname) {
+    var regex = /^\w*$/;
+    return regex.exec(nickname) !== null;
+};
+
 exports.randomInRange = function (from, to) {
     return Math.floor(Math.random() * (to -from)) + from;
 };

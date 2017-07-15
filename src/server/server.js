@@ -14,6 +14,7 @@ var util = require('./util');
 
 app.use(express.static(__dirname + '/../client'));
 
+var sockets = {};
 //플레이 하는 사람
 var players = [];
 //인공지능들
@@ -22,8 +23,9 @@ var ais = [];
 function getAllEntities() {
   return players.concat(ais);
 }
+var attacks = [];
+var bloods = [];
 
-var sockets = {};
 
 var leaderboard = [];
 var leaderboardChanged = false;
@@ -88,7 +90,8 @@ io.on('connection', function (socket) {
     });
 
     socket.on('playerSendAttack', function(attack) {
-    //
+        attack.duration = config.attackDuration;
+        attacks.push(attack);
     });
 
 });
@@ -108,6 +111,40 @@ function tickPlayer(currentPlayer) {
     movePlayer(currentPlayer);
 
   //공격 확인, 죽음 이벤트 발생('serverTellPlayerDie') ....
+  io.emit('serverTellPlayerDie', function(death) {
+
+  });
+}
+
+//ai ->speed: 0 or 1, 방향, 속도 유지 시간 지정, 적절한 범위 내에서 방향과 속도를 바꿀 것
+function updateAiState(ai) {
+    if(ai.duration === 0) {
+        //방향 변화
+
+        //속도 변화
+        ai.speed = Math.floor(Math.random() + 0.5);
+    } else {
+        (ai.duration)--;
+    }
+
+
+}
+
+function tickAttacks() {
+    attacks = attacks.map( function (attack) {
+        if (attack.duration > 0) {
+            attack.duration--;
+            return attack;
+        }
+    }).filter( function (attack) { return attack; });
+}
+function tickBloods() {
+    bloods = bloods.map( function (blood) {
+        if (blood.duration > 0) {
+            blood.duration--;
+            return blood;
+        }
+    }).filter( function (blood) { return blood; });
 }
 
 
@@ -116,11 +153,15 @@ function moveloop() {
         tickPlayer(players[i]);
     }
     for (i = 0; i < ais.length; i++) {
+        updateAiState(ais[i]);
         tickPlayer(ais[i]);
     }
+    tickAttacks();
+    tickBloods();
 }
 
 function gameloop() {
+    //leaderboard 처리
     if (players.lenght > 0) {
         players.sort( function(a,b) { return b.score - a.score; });
     }
@@ -151,15 +192,15 @@ function gameloop() {
 
 function sendUpdates() {
     var entities = getAllEntities();
-    players.forEach( function(e) {
+    players.forEach( function(p) {
         var visibleEntities = entities.filter(); //계산법?
         var visibleAttacks = [];
         var visibleBloods = [];
 
-        if(e.type === 'player') {
-            sockets[e.id].emit('serverTellPlayerMove', visibleEntities, visibleAttacks, visibleBloods);
+        if(p.type === 'player') {
+            sockets[p.id].emit('serverTellPlayerMove', visibleEntities, visibleAttacks, visibleBloods);
             if(leaderboardChanged) {
-                sockets[e.id].emit('leaderboard', {
+                sockets[p.id].emit('leaderboard', {
                     players: players.length,
                     leaderboard: leaderboard
             });

@@ -4,4 +4,5 @@
     "gameHeight": 2000,
     "playerSize": 10,
     "networkUpdateFactor": 40,
+    "attackDuration": 3,
 }
