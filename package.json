@@ -1,18 +1,40 @@
 {
   "name": "jungle.io",
-  "version": "0.1",
+  "version": "0.1.0",
   "description": "Simple web game to assassinate each others.",
   "main": "src/server/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server/server.js"
+    "build": "gulp build",
+    "start": "gulp run",
+    "watch": "gulp watch",
+    "test": "gulp test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hangpark/jungle.io.git"
   },
   "contributors": [
-      "Hang Park <hangpark@kaist.ac.kr> (https://github.com/hangpark)",
-      "Jaehwang Jung <jhjerry97@kaist.ac.kr> (https://github.com/tomtom-jhjerry)"
+    "Hang Park <hangpark@kaist.ac.kr> (https://github.com/hangpark)",
+    "Jaehwang Jung <jhjerry97@kaist.ac.kr> (https://github.com/tomtom-jhjerry)"
   ],
+  "license": "MIT",
   "dependencies": {
+    "babel-core": "^6.25.0",
+    "babel-loader": "^7.1.1",
+    "babel-preset-es2015": "^6.24.1",
     "express": "^4.13.0",
-    "socket.io": "^1.3.5"
+    "gulp": "^3.9.1",
+    "gulp-babel": "^6.1.2",
+    "gulp-jshint": "^2.0.4",
+    "gulp-mocha": "^4.3.1",
+    "gulp-nodemon": "^2.2.1",
+    "gulp-todo": "^5.4.0",
+    "gulp-uglify": "^3.0.0",
+    "jshint": "^2.9.5",
+    "nodemon": "^1.11.0",
+    "socket.io": "^2.0.3",
+    "socket.io-client": "^2.0.3",
+    "webpack": "^3.3.0",
+    "webpack-stream": "^3.2.0"
   }
 }
