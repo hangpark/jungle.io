@@ -160,23 +160,35 @@ function tickPlayer(currentPlayer) {
 
 }
 
+
 //ai ->speed: 0 or 1, 방향, 속도 유지 시간 지정, 적절한 범위 내에서 방향과 속도를 바꿀 것
 //ai 작동 방식 -> 그냥 사람처럼 움직이는 게 아니라 일정주기마다 목적지를 정해서 그쪽으로 걸어가게 하자?
-function updateAiState(ai) {
-    // if (util.isInBoundary(ai)) {
-    //
-    // } else if (ai.duration === 0) {
-    //     //방향 변화
-    //
-    //     //속도 변화
-    //     ai.speed = Math.floor(Math.random() + 0.5);
-    // }
-    // else {
-    //     (ai.duration)--;
-    // }
-    //
+//tickAi를 새로 만들어야?
 
+
+function tickAi(ai) {
+    if(ai.count == 0 || util.distance(ai.x, ai.y, ai.targetX, ai.targetY) < 3) {
+        ai.target = util.randomPosition();
+        ai.count = util.randomInRange(3, 10);
+    } else {
+        ai.count--;
+        //벡터차
+        var targetX = ai.target.x - ai.x;
+        var targetY = ai.target.y - ai.y;
+        //벡터차의 각
+        var angleToTarget = Math.atan2(targetY, targetX);
+        var deltaAngle = ai.direction - angleToTarget;
+        //반시계방향으로 돌아야 할 때 적당히 회전시키고 그 반대면 반대로
+        if(deltaAngle > 0) {
+            ai.direction += Math.PI / 180;
+        } else {
+            ai.direction -= Math.PI / 180;
+        }
+        movePlayer(ai);
+    }
 }
+
+
 
 function tickAttacks() {
     attacks = attacks.map( function (attack) {
@@ -201,8 +213,7 @@ function moveloop() {
         tickPlayer(players[i]);
     }
     for (i = 0; i < ais.length; i++) {
-        updateAiState(ais[i]);
-        tickPlayer(ais[i]);
+        tickAi(ais[i]);
     }
     tickAttacks();
     tickBloods();
