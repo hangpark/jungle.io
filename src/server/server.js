@@ -11,8 +11,8 @@ var V = SAT.Vector;
 var C = SAT.Circle;
 var P = SAT.Polygon;
 
-var cfg  = require('./config.json');
 var util = require('./util');
+var cfg  = require('../../config.json');
 
 app.use(express.static(__dirname + '/../client'));
 
