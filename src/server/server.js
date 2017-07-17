@@ -34,7 +34,7 @@ var leaderboardChanged = false;
 
 io.on('connection', function (socket) {
     console.log("Somebody connected!", socket.handshake.query.type);
-
+    //type: human
     var type = socket.handshake.query.type;
     var position = util.randomPosition();
 
@@ -69,10 +69,6 @@ io.on('connection', function (socket) {
         currentPlayer = player;
         players.push(currentPlayer);
 
-        socket.emit('gameSetup', {
-            gameWidth: cfg.gameWidth,
-            gameHeight: cfg.gameHeight
-        });
     });
 
     socket.on('windowResized', function(data) {
@@ -114,81 +110,78 @@ function movePlayer(player) {
     //canvas에서 각 어떻게 처리하는지 고려
     player.x += player.speed * Math.sin(player.direction);
     player.y -= player.speed * Math.cos(player.direction);
-
 }
 
-
-
-
-function tickPlayer(currentPlayer) {
-    movePlayer(currentPlayer);
-
+function checkAttack(player) {
     //TODO player's shape?
-    var playerArea = new P(new V(currentPlayer.x, currentPlayer.y), [
+    var playerArea = new P(new V(player.x, player.y), [
         new V(0, -cfg.playerSize),
         new V(cfg.playerSize / 2, cfg.playerSize / 2),
         new V(-cfg.playerSize / 2, cfg.playerSize / 2),
     ]);
 
     for (var attack in attacks) {
-        if((util.distance(currentPlayer.x, currentPlayer.y, attack.x, attack.y) > cfg.attackRadius + cfg.playerSize) ||
-            (attack.attacker == currentPlayer))  continue; //check if the attack is valid.
+        if((util.distance(player.x, player.y, attack.x, attack.y) > cfg.attackRadius + cfg.playerSize) ||
+            (attack.attacker == player))  continue; //check if the attack is valid.
 
         var attackCircle = new C(new V(attack.x, attack.y), cfg.attackRadius);
         var attacked = SAT.testPolygonCircle(playerArea, attackCircle, new SAT.Response());
         if (attacked) {
             bloods.push({
-                x: currentPlayer.x,
-                y: currentPlayer.y,
+                x: player.x,
+                y: player.y,
                 duration: cfg.bloodDuration,
             });
 
-            if(currentPlayer.type === 'human') {
-                sockets[currentPlayer.id].emit('serverTellPlayerDie');
-                players.splice(util.findIndex(players, currentPlayer), 1);
+            if(player.type === 'human') {
+                sockets[player.id].emit('serverTellPlayerDie');
+                players.splice(util.findIndex(players, player), 1);
                 attack.attacker.score++;
-            } else {
+            } else { //player.type === 'ai'
                 attack.attacker.score -= 2;
-                ais.splice(util.findIndex(ais, currentPlayer), 1);
+                //ai는 id 없어서 findIndex 불가하므로 filter로 제거
+                player.state = 'dead';
+                ais = ais.filter(function (ai) {
+                    return (ai.state !== 'dead');
+                });
             }
 
             break;
         }
     }
-
-    //공격 확인, 죽음 이벤트 발생('serverTellPlayerDie') ....
-
 }
 
+function tickPlayer(currentPlayer) {
+    movePlayer(currentPlayer);
+    checkAttack(currentPlayer);
+}
 
-//ai ->speed: 0 or 1, 방향, 속도 유지 시간 지정, 적절한 범위 내에서 방향과 속도를 바꿀 것
 //ai 작동 방식 -> 그냥 사람처럼 움직이는 게 아니라 일정주기마다 목적지를 정해서 그쪽으로 걸어가게 하자?
-//tickAi를 새로 만들어야?
-
-
 function tickAi(ai) {
+    //방향설정
     if(ai.count == 0 || util.distance(ai.x, ai.y, ai.targetX, ai.targetY) < 3) {
         ai.target = util.randomPosition();
         ai.count = util.randomInRange(3, 10);
-    } else {
-        ai.count--;
-        //벡터차
-        var targetX = ai.target.x - ai.x;
-        var targetY = ai.target.y - ai.y;
-        //벡터차의 각
-        var angleToTarget = Math.atan2(targetY, targetX);
-        var deltaAngle = ai.direction - angleToTarget;
-        //반시계방향으로 돌아야 할 때 적당히 회전시키고 그 반대면 반대로
-        if(deltaAngle > 0) {
-            ai.direction += Math.PI / 180;
-        } else {
-            ai.direction -= Math.PI / 180;
-        }
-        movePlayer(ai);
     }
+    ai.count--;
+    //벡터차
+    var targetX = ai.target.x - ai.x;
+    var targetY = ai.target.y - ai.y;
+    //벡터차의 방향
+    var angleToTarget = Math.atan2(targetY, targetX);
+    //TODO 각이 PI~-PI에서 돌아 다니는 게 아니여서 이렇게 단순하게 처리하면 문제생김
+    var deltaAngle = ai.direction - angleToTarget;
+    //반시계방향으로 돌아야 할 때 적당히 회전시키고 그 반대면 반대로
+    if(deltaAngle > 0) {
+        ai.direction += Math.PI / 180;
+    } else {
+        ai.direction -= Math.PI / 180;
+    }
+
+    movePlayer(ai);
+    checkAttack(ai);
+
 }
-
-
 
 function tickAttacks() {
     attacks = attacks.map( function (attack) {
@@ -207,7 +200,6 @@ function tickBloods() {
     }).filter( function (blood) { return blood; });
 }
 
-
 function moveloop() {
     for (var i = 0; i < players.length; i++) {
         tickPlayer(players[i]);
@@ -221,7 +213,7 @@ function moveloop() {
 
 function gameloop() {
     //leaderboard 처리
-    if (players.lenght > 0) {
+    if (players.length > 0) {
         players.sort( function(a,b) { return b.score - a.score; });
     }
     var topPlayers = [];
@@ -229,7 +221,8 @@ function gameloop() {
     for (var i = 0; i < Math.min(5, players.length); i++) {
         topPlayers.push({
             id: players[i].id,
-            name: players[i].name
+            name: players[i].name,
+            score: players[i].score,
         });
     }
     if(leaderboard.length !== topPlayers.length) {
@@ -243,6 +236,19 @@ function gameloop() {
                 break;
             }
         }
+    }
+
+    //ai 적정 수 유지
+    while(ais.length < cfg.numAis) {
+        var position = util.randomPosition();
+        ais.push({
+            type: 'ai',
+            x: position.x,
+            y: position.y,
+            speed: 1,
+            direction: (Math.random() - 0.5) * Math.PI,
+            count: util.randomInRange(3,10),
+        });
     }
 
 
