@@ -8,5 +8,5 @@
     "attackRadius": 7,
     "bloodDuration": 10000,
     "backSight": 10,
-    "numAis" : 20,
+    "numAis" : 20
 }

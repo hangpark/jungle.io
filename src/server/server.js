@@ -11,7 +11,7 @@ var V = SAT.Vector;
 var C = SAT.Circle;
 var P = SAT.Polygon;
 
-var util = require('./util');
+var util = require('./lib/util');
 var cfg  = require('../../config.json');
 
 app.use(express.static(__dirname + '/../client'));
@@ -48,8 +48,15 @@ io.on('connection', function (socket) {
             players.splice(util.findIndex(players, currentPlayer.id), 1);
         currentPlayer.screenWidth = screenWidth;
         currentPlayer.screenHeight = screenHeight;
+        var gameData = {
+            gameWidth: cfg.gameWidth,
+            gameHeight: cfg.gameHeight,
+            backSight: cfg.backSight,
+            playerSize: cfg.playerSize,
+            attackRadius: cfg.attackRadius
+        };
 
-        socket.emit('welcome', currentPlayer, cfg.gameWidth, cfg.gameHeight);
+        socket.emit('welcome', currentPlayer, gameData);
 
         if(currentPlayer.name == undefined)
             console.log('new player tries to join the game');
@@ -63,6 +70,7 @@ io.on('connection', function (socket) {
 
         player.x = position.x;
         player.y = position.y;
+        player.rotate = 0;
         player.direction = 0;
         player.speed = 0;
         player.score = 0;
@@ -76,14 +84,10 @@ io.on('connection', function (socket) {
         currentPlayer.screenHeight = data.screenHeight;
     });
 
-    socket.on('playerSendStatus', function (status) {
-
-    });
-
-
-    socket.on('playerSendDirection', function(direction) {
-        if(direction !== currentPlayer.direction) {
-            currentPlayer.direction = direction;
+    socket.on('playerSendRotate', function(rotate) {
+        if(rotate !== currentPlayer.rotate) {
+            currentPlayer.direction =
+                util.normalizeAngle(currentPlayer.direction + rotate * Math.PI / 180);
         }
     });
 
@@ -107,9 +111,18 @@ io.on('connection', function (socket) {
 
 
 function movePlayer(player) {
-    //canvas에서 각 어떻게 처리하는지 고려
-    player.x += player.speed * Math.sin(player.direction);
-    player.y -= player.speed * Math.cos(player.direction);
+    var angle = util.normalizeAngle(player.direction);
+    //상하 움직임이 문제되지 않는 경우에만 허용
+    //문제되는 경우는 위에서 위로가려는 경우, 아래에서 아래로 가는 경우
+    if( !(util.isOnTopBoundary(player) && Math.abs(angle) < Math.PI/2 ) ||
+        !(util.isOnBottomBoundary(player) && Math.abs(angle) > Math.PI/2) ) {
+            player.y -= player.speed * Math.cos(player.direction);
+        }
+
+    if( !(util.isOnLeftBoundary(player) && util.isInRange(angle, -Math.PI, 0)) ||
+        !(util.isOnRightBoundary(player) && util.isInRange(angle, 0, Math.PI))) {
+            player.x += player.speed * Math.sin(player.direction);
+        }
 }
 
 function checkAttack(player) {
@@ -137,7 +150,7 @@ function checkAttack(player) {
                 sockets[player.id].emit('serverTellPlayerDie');
                 players.splice(util.findIndex(players, player), 1);
                 attack.attacker.score++;
-            } else { //player.type === 'ai'
+            } else { //player.type === 'computer'
                 attack.attacker.score -= 2;
                 //ai는 id 없어서 findIndex 불가하므로 filter로 제거
                 player.state = 'dead';
@@ -158,29 +171,27 @@ function tickPlayer(currentPlayer) {
 
 //ai 작동 방식 -> 그냥 사람처럼 움직이는 게 아니라 일정주기마다 목적지를 정해서 그쪽으로 걸어가게 하자?
 function tickAi(ai) {
-    //방향설정
+    //목표지 설정
     if(ai.count == 0 || util.distance(ai.x, ai.y, ai.targetX, ai.targetY) < 3) {
         ai.target = util.randomPosition();
-        ai.count = util.randomInRange(3, 10);
+        ai.count = util.randomInRange(180, 600);
     }
     ai.count--;
-    //벡터차
+    //차벡터(ai -> target)
     var targetX = ai.target.x - ai.x;
     var targetY = ai.target.y - ai.y;
-    //벡터차의 방향
-    var angleToTarget = Math.atan2(targetY, targetX);
-    //TODO 각이 PI~-PI에서 돌아 다니는 게 아니여서 이렇게 단순하게 처리하면 문제생김
-    var deltaAngle = ai.direction - angleToTarget;
+    //차벡터의 방향
+    var angleToTarget = Math.atan2(targetY, targetX) + (Math.PI / 2);
+    var deltaAngle = util.normalizeAngle(angleToTarget - ai.direction);
     //반시계방향으로 돌아야 할 때 적당히 회전시키고 그 반대면 반대로
     if(deltaAngle > 0) {
-        ai.direction += Math.PI / 180;
+        ai.direction = util.normalizeAngle(ai.direction + Math.PI / 180);
     } else {
-        ai.direction -= Math.PI / 180;
+        ai.direction = util.normalizeAngle(ai.direction - Math.PI / 180);
     }
 
     movePlayer(ai);
     checkAttack(ai);
-
 }
 
 function tickAttacks() {
@@ -239,41 +250,53 @@ function gameloop() {
     }
 
     //ai 적정 수 유지
-    while(ais.length < cfg.numAis) {
-        var position = util.randomPosition();
+    //while(ais.length < cfg.numAis) {
+    while(ais.length < 1) {
+        //var position = util.randomPosition();
+        var position = {x:1950, y:50};
         ais.push({
-            type: 'ai',
+            type: 'computer',
+            target: util.randomPosition(),
             x: position.x,
             y: position.y,
             speed: 1,
-            direction: (Math.random() - 0.5) * Math.PI,
-            count: util.randomInRange(3,10),
+            direction: 2 * (Math.random() - 0.5) * Math.PI,
+            count: util.randomInRange(180,600),
         });
     }
 
-
 }
-
 
 function sendUpdates() {
     var entities = getAllEntities();
     players.forEach( function(p) {
         var screenBox = new P( new V(p.x, p.y), [
-            new V(p.screenWidth / 2, cfg.backSight),
-            new V(- p.screenWidth / 2, cfg.backSight),
-            new V(- p.screenWidth / 2, cfg.backSight - p.screenHeight),
-            new V(p.screenWidth / 2, cfg.backSight - p.screenHeight)
+            new V(p.screenWidth / 2 + cfg.playerSize , cfg.backSight + cfg.playerSize),
+            new V(- p.screenWidth / 2 - cfg.playerSize, cfg.backSight + cfg.playerSize),
+            new V(- p.screenWidth / 2 - cfg.playerSize, cfg.backSight - p.screenHeight - cfg.playerSize),
+            new V(p.screenWidth / 2 + cfg.playerSize, cfg.backSight - p.screenHeight - cfg.playerSize)
         ]).rotate(p.direction);
 
         var visibleEntities = entities.filter( function (e) {
             return SAT.pointInPolygon(new V(e.x, e.y), screenBox);
+        }).map(function (e) {
+            return { //만약 이 entity가 자기 자신이라면 me가 true
+                me: (p.id === e.id),
+                x: e.x,
+                y: e.y,
+                direction: e.direction
+            };
         });
 
         var visibleAttacks = attacks.filter( function (a) {
             return SAT.pointInPolygon(new V(a.x, a.y), screenBox);
+        }).map(function (a) {
+            return { x: a.x, y: a.y };
         });
         var visibleBloods = bloods.filter( function (b) {
             return SAT.pointInPolygon(new V(b.x, b.y), screenBox);
+        }).map(function (b) {
+            return { x: b.x, y: b.y };
         });
 
         sockets[p.id].emit('serverTellPlayerMove', visibleEntities, visibleAttacks, visibleBloods);
