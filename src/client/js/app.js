@@ -202,6 +202,14 @@ function drawPlayer(player) {
   graph.fill();
 }
 
+function drawAttack(attack) {
+  var pos = gameToScreen(attack.x, attack.y);
+
+  graph.beginPath();
+  graph.arc(pos.x, pos.y, global.playerSize, 0, 2 * Math.PI);
+  graph.fillStyle = global.attackColor;
+  graph.fill();
+}
 
 function drawBlood(blood) {
   var pos = gameToScreen(blood.x, blood.y);
