@@ -276,7 +276,9 @@ function sendUpdates() {
     var visibleAttacks = attacks.filter( function (a) {
       return SAT.pointInPolygon(new V(a.x, a.y), screenBox);
     }).map(function (a) {
-      return { x: a.x, y: a.y };
+      var x = a.attacker.x + cfg.playerSize * Math.sin(a.attacker.direction);
+      var y = a.attacker.y - cfg.playerSize * Math.cos(a.attacker.direction);
+      return { x: x, y: y };
     });
 
     var visibleBloods = bloods.filter( function (b) {
