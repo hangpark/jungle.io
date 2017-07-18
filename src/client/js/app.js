@@ -74,17 +74,19 @@ var graph = c.getContext('2d');
 
 function setupSocket(socket) {
   socket.on('connect_failed', function() {
+    console.log("[INFO] Connection failed.");
     socket.close();
     global.disconnected = true;
   });
 
   socket.on('disconnect', function() {
+    console.log("[INFO] Disconnected.");
     socket.close();
     global.disconnected = true;
   });
 
   socket.on('welcome', function(player, data) {
-    console.log("welcome");
+    console.log("[INFO] Server welcomes you!");
     me = player;
     me.screenWidth = global.screenWidth;
     me.screenHeight = global.screenHeight;
@@ -105,7 +107,6 @@ function setupSocket(socket) {
     for (var i = 0; i < visiblePlayers.length; i++) {
       if (visiblePlayers[i].me) {
         me = visiblePlayers[i];
-        console.log(me.direction);
         break;
       }
     }
@@ -116,6 +117,7 @@ function setupSocket(socket) {
   });
 
   socket.on('serverTellPlayerDie', function() {
+    console.log("[INFO] You died!");
     global.gameStart = false;
     global.died = true;
     window.setTimeout(function() {
@@ -277,6 +279,7 @@ window.addEventListener('resize', resize);
 function resize() {
   if (!socket) return;
 
+  console.log("[INFO] Window resized.");
   me.screenWidth = c.width = global.screenWidth = window.innerWidth;
   me.screenHeight = c.height = global.screenHeight = window.innerHeight;
 
