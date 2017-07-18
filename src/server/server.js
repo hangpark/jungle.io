@@ -284,7 +284,7 @@ function sendUpdates() {
     var visibleBloods = bloods.filter( function (b) {
       return SAT.pointInPolygon(new V(b.x, b.y), screenBox);
     }).map(function (b) {
-      return { x: b.x, y: b.y };
+      return { x: b.x, y: b.y, opacity: b.duration / cfg.bloodDuration };
     });
 
     sockets[p.id].emit('serverTellPlayerMove', visibleEntities, visibleAttacks, visibleBloods);
