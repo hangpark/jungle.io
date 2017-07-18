@@ -76,6 +76,7 @@ io.on('connection', function (socket) {
     currentPlayer.direction = 2 * (Math.random() - 0.5) * Math.PI;
     currentPlayer.speed = 0;
     currentPlayer.score = 0;
+    currentPlayer.isDead = false;
     players.push(currentPlayer);
 
   });
