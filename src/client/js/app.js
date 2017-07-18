@@ -300,7 +300,10 @@ function gameLoop() {
         drawBoundary();
         bloods.forEach(drawBlood);
         attacks.forEach(drawAttack);
-        players.forEach(drawPlayer);
+        players.filter(function(player) {
+          return !player.me;
+        }).forEach(drawPlayer);
+        drawPlayer(me);
       }
     } else {
       graph.fillStyle = '#333333';
