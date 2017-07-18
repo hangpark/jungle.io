@@ -221,6 +221,7 @@ function gameLoop() {
   var topPlayers = [];
   for (var i = 0; i < Math.min(5, players.length); i++) {
     topPlayers.push({
+      id: players[i].id, //id는 client로 보낼 필요가 없으므로 'leaderboard' 이벤트에서 삭제한다.
       name: players[i].name,
       score: players[i].score,
     });
@@ -230,7 +231,7 @@ function gameLoop() {
     leaderboardChanged = true;
   } else {
     for(i = 0; i < leaderboard.length; i++) {
-      if(leaderboard[i].id !== topPlayers[i].id) {
+      if(leaderboard[i].id !== topPlayers[i].id || leaderboard[i].score !== topPlayers[i].score) {
         leaderboard = topPlayers;
         leaderboardChanged = true;
         break;
@@ -289,6 +290,14 @@ function sendUpdates() {
 
     sockets[p.id].emit('serverTellPlayerMove', visibleEntities, visibleAttacks, visibleBloods);
     if(leaderboardChanged) {
+      //leaderboard에서 자기자신인지 알기 위해 'me' 멤버 첨가
+      leaderboard = leaderboard.map(function (leader) {
+        return {
+          name: leader.name,
+          score: leader.score,
+          me: (p.id === leader.id)
+        };
+      });
       sockets[p.id].emit('leaderboard', {
         players: players.length,
         leaderboard: leaderboard

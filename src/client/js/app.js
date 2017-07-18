@@ -68,6 +68,7 @@ var me = {};
 var players = [];
 var attacks = [];
 var bloods = [];
+var leaderboard = [];
 
 window.canvas = new Canvas();
 
@@ -136,6 +137,26 @@ function setupSocket(socket) {
       }
     }, 2500);
   });
+
+  socket.on('leaderboard', function (data) {
+    leaderboard = data.leaderboard;
+    var status = '<span class="title">Leaderboard</span>';
+    for (var i = 0; i < leaderboard.length; i++) {
+      status += '<br />';
+      if (leaderboard[i].me) {
+        if(leaderboard[i].name.length !== 0)
+          status += '<span class="me">' + (i + 1) + '. ' + leaderboard[i].name + ": "+ leaderboard[i].score +"</span>";
+        else
+          status += '<span class="me">' + (i + 1) + ". Anonymous player" + ": "+ leaderboard[i].score + "</span>";
+      } else {
+        if(leaderboard[i].name.length !== 0)
+            status += (i + 1) + '. ' + leaderboard[i].name + ": "+ leaderboard[i].score;
+        else
+            status += (i + 1) + '. Anonymous player' + ": "+ leaderboard[i].score;
+      }
+    }
+    document.getElementById('leaderboard').innerHTML = status;
+  });
 }
 
 // Draw components
@@ -167,7 +188,7 @@ function drawGrid() {
 function drawBoundary() {
   graph.lineWidth = 5;
   graph.strokeStyle = global.lineColor;
-  
+
   graph.beginPath();
   corners = [gameToScreen(0, 0),
              gameToScreen(0, global.gameHeight),
@@ -230,7 +251,7 @@ function gameToScreen(x, y) {
   var dy = y - me.y;
   var sin = Math.sin(me.direction);
   var cos = Math.cos(me.direction);
-  
+
   var relX = dx * cos + dy * sin;
   var relY = dx * sin - dy * cos;
 
