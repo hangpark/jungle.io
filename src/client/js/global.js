@@ -18,4 +18,5 @@ module.exports = {
   lineColor: '#000000',
   playerColor: '#ffa400',
   currentPlayerColor: '#1d6291',
+  attackColor: '#edde45',
 };

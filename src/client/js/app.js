@@ -5,6 +5,8 @@ var global = require('./global');
 var playerNameInput = document.getElementById('playerNameInput');
 var socket;
 
+var imgBlood;
+
 function startGame() {
   global.playerName = playerNameInput.value.replace(/(<([^>]+)>)/ig, '').substring(0,25);
 
@@ -91,7 +93,6 @@ function setupSocket(socket) {
     me.screenWidth = global.screenWidth;
     me.screenHeight = global.screenHeight;
     me.direction = window.canvas.direction;
-    global.gameStart = true;
     global.gameWidth = data.gameWidth;
     global.gameHeight = data.gameHeight;
     global.backSight = data.backSight;
@@ -100,7 +101,12 @@ function setupSocket(socket) {
     resize();
     c.focus();
 
-    socket.emit('gotit', global.playerName);
+    imgBlood = new Image();
+    imgBlood.src = './img/blood.png';
+    imgBlood.onload = function() {
+      global.gameStart = true;
+      socket.emit('gotit', global.playerName);
+    };
   });
 
   socket.on('serverTellPlayerMove', function(visiblePlayers, visibleAttacks, visibleBloods) {
@@ -196,6 +202,29 @@ function drawPlayer(player) {
   graph.fill();
 }
 
+function drawAttack(attack) {
+  var pos = gameToScreen(attack.x, attack.y);
+
+  graph.beginPath();
+  graph.arc(pos.x, pos.y, global.playerSize, 0, 2 * Math.PI);
+  graph.fillStyle = global.attackColor;
+  graph.fill();
+}
+
+function drawBlood(blood) {
+  var pos = gameToScreen(blood.x, blood.y);
+
+  graph.globalAlpha = blood.opacity;
+  graph.save();
+
+  graph.translate(pos.x, pos.y);
+  graph.rotate(-me.direction);
+  graph.drawImage(imgBlood, -50, -50, 100, 100);
+
+  graph.restore();
+  graph.globalAlpha = 1;
+}
+
 function gameToScreen(x, y) {
   var dx = x - me.x;
   var dy = y - me.y;
@@ -248,9 +277,9 @@ function gameLoop() {
       if (global.gameStart) {
         drawGrid();
         drawBoundary();
+        bloods.forEach(drawBlood);
+        attacks.forEach(drawAttack);
         players.forEach(drawPlayer);
-        // bloods.forEach(drawBlood);
-        // attacks.forEach(drawAttack);
       }
     } else {
       graph.fillStyle = '#333333';
