@@ -16,4 +16,7 @@ module.exports = {
 
   backgroundColor: '#f2fbff',
   lineColor: '#000000',
+  playerColor: '#ffa400',
+  currentPlayerColor: '#1d6291',
+  attackColor: '#edde45',
 };

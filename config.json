@@ -1,12 +1,16 @@
 {
   "port": 3000,
-  "gameWidth": 3000,
-  "gameHeight": 3000,
-  "playerSize": 30,
+  "gameWidth": 2500,
+  "gameHeight": 2500,
+  "playerSize": 40,
   "networkUpdateFactor": 40,
   "attackDuration": 10,
-  "attackRadius": 60,
+  "attackRadius": 40,
   "bloodDuration": 1800,
-  "backSight": 120,
-  "numAis" : 80
+  "backSight": 100,
+  "speedConstant": 1.5,
+  "rotateConstant": 1,
+  "numAis": 40,
+  "scoreKillAi": 1,
+  "scoreKillPlayer": 10
 }

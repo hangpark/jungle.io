@@ -21,10 +21,17 @@ class Canvas {
   updateKeyStatus(event) {
     var keyCode = event.which || event.keyCode;
     this.keys = (this.keys || []);
+    var prevKey = this.keys[keyCode];
     this.keys[keyCode] = (event.type == "keydown");
+
+    if (prevKey == this.keys[keyCode]) {
+      return;
+    }
+
     switch(keyCode) {
       case global.KEY_ATTACK:
-        this.socket.emit('playerSendAttack');
+        if (event.type == "keydown")
+          this.socket.emit('playerSendAttack');
         break;
       case global.KEY_RUN:
       case global.KEY_UP:
@@ -34,7 +41,7 @@ class Canvas {
           if (this.keys[global.KEY_DOWN]) {
             speed = 0;
           } else if (this.keys[global.KEY_RUN]) {
-            speed = 2;
+            speed = 3;
           } else {
             speed = 1;
           }

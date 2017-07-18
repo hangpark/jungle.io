@@ -42,13 +42,11 @@ var gameData = {
 };
 
 io.on('connection', function (socket) {
-  console.log("Somebody connected!", socket.handshake.query.type);
-  //type: human
-  var type = socket.handshake.query.type;
-  var position = util.randomPosition();
+  console.log("Somebody connected!");
 
   var currentPlayer = {
     id: socket.id,
+    type: 'human'
   };
 
   socket.on('respawn', function (screenWidth, screenHeight) {
@@ -70,6 +68,7 @@ io.on('connection', function (socket) {
     console.log('[INFO] Player ' + name + ' connected');
     sockets[currentPlayer.id] = socket;
 
+    var position = util.randomPosition();
     currentPlayer.name = name;
     currentPlayer.x = position.x;
     currentPlayer.y = position.y;
@@ -87,11 +86,11 @@ io.on('connection', function (socket) {
   });
 
   socket.on('playerSendRotate', function(rotate) {
-    currentPlayer.rotate = rotate;
+    currentPlayer.rotate = cfg.rotateConstant * rotate;
   });
 
   socket.on('playerSendSpeed', function(speed) {
-      currentPlayer.speed = speed;
+      currentPlayer.speed = cfg.speedConstant * speed;
   });
 
   socket.on('playerSendAttack', function() {
@@ -146,10 +145,10 @@ function checkAttack(attack) {
       entity.isDead = true;
       if(entity.type === 'human') {
         sockets[entity.id].emit('serverTellPlayerDie');
-        attack.attacker.score++;
+        attack.attacker.score += cfg.scoreKillPlayer;
         players = players.filter(function (p) { return !p.isDead; });
       } else { //player.type === 'computer'
-        attack.attacker.score -= 3;
+        attack.attacker.score += cfg.scoreKillAi;
         ais = ais.filter(function (a) { return !a.isDead; });
       }
     }
@@ -165,7 +164,13 @@ function tickAi(ai) {
   //목표지 설정
   if(ai.count == 0 || util.distance(ai.x, ai.y, ai.targetX, ai.targetY) < 3) {
     ai.target = util.randomPosition();
-    ai.count = util.randomInRange(180, 600);
+    if(Math.random() > 0.89) {
+      ai.count = util.randomInRange(40, 120);
+      ai.speed = 0;
+    } else {
+      ai.count = util.randomInRange(180, 600);
+      ai.speed = 1;
+    }
   }
   ai.count--;
   //차벡터(ai -> target)
@@ -175,9 +180,9 @@ function tickAi(ai) {
   var angleToTarget = Math.atan2(targetY, targetX) + (Math.PI / 2);
   var deltaAngle = util.normalizeAngle(angleToTarget - ai.direction);
   //반시계방향으로 돌아야 할 때 적당히 회전시키고 그 반대면 반대로
-  if(deltaAngle > 0) {
+  if(deltaAngle > Math.PI / 60) {
     ai.direction = util.normalizeAngle(ai.direction + Math.PI / 180);
-  } else {
+  } else if (deltaAngle < - Math.PI / 60) {
     ai.direction = util.normalizeAngle(ai.direction - Math.PI / 180);
   }
 
@@ -216,6 +221,7 @@ function gameLoop() {
   var topPlayers = [];
   for (var i = 0; i < Math.min(5, players.length); i++) {
     topPlayers.push({
+      id: players[i].id, //id는 client로 보낼 필요가 없으므로 'leaderboard' 이벤트에서 삭제한다.
       name: players[i].name,
       score: players[i].score,
     });
@@ -225,7 +231,7 @@ function gameLoop() {
     leaderboardChanged = true;
   } else {
     for(i = 0; i < leaderboard.length; i++) {
-      if(leaderboard[i].id !== topPlayers[i].id) {
+      if(leaderboard[i].id !== topPlayers[i].id || leaderboard[i].score !== topPlayers[i].score) {
         leaderboard = topPlayers;
         leaderboardChanged = true;
         break;
@@ -246,7 +252,6 @@ function gameLoop() {
       count: util.randomInRange(180,600),
     });
   }
-
 }
 
 function sendUpdates() {
@@ -272,17 +277,27 @@ function sendUpdates() {
     var visibleAttacks = attacks.filter( function (a) {
       return SAT.pointInPolygon(new V(a.x, a.y), screenBox);
     }).map(function (a) {
-      return { x: a.x, y: a.y };
+      var x = a.attacker.x + cfg.playerSize * Math.sin(a.attacker.direction);
+      var y = a.attacker.y - cfg.playerSize * Math.cos(a.attacker.direction);
+      return { x: x, y: y };
     });
 
     var visibleBloods = bloods.filter( function (b) {
       return SAT.pointInPolygon(new V(b.x, b.y), screenBox);
     }).map(function (b) {
-      return { x: b.x, y: b.y };
+      return { x: b.x, y: b.y, opacity: b.duration / cfg.bloodDuration };
     });
 
     sockets[p.id].emit('serverTellPlayerMove', visibleEntities, visibleAttacks, visibleBloods);
     if(leaderboardChanged) {
+      //leaderboard에서 자기자신인지 알기 위해 'me' 멤버 첨가
+      leaderboard = leaderboard.map(function (leader) {
+        return {
+          name: leader.name,
+          score: leader.score,
+          me: (p.id === leader.id)
+        };
+      });
       sockets[p.id].emit('leaderboard', {
         players: players.length,
         leaderboard: leaderboard

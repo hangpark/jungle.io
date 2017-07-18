@@ -5,6 +5,8 @@ var global = require('./global');
 var playerNameInput = document.getElementById('playerNameInput');
 var socket;
 
+var imgBlood;
+
 function startGame() {
   global.playerName = playerNameInput.value.replace(/(<([^>]+)>)/ig, '').substring(0,25);
 
@@ -66,6 +68,7 @@ var me = {};
 var players = [];
 var attacks = [];
 var bloods = [];
+var leaderboard = [];
 
 window.canvas = new Canvas();
 
@@ -74,22 +77,23 @@ var graph = c.getContext('2d');
 
 function setupSocket(socket) {
   socket.on('connect_failed', function() {
+    console.log("[INFO] Connection failed.");
     socket.close();
     global.disconnected = true;
   });
 
   socket.on('disconnect', function() {
+    console.log("[INFO] Disconnected.");
     socket.close();
     global.disconnected = true;
   });
 
   socket.on('welcome', function(player, data) {
-    console.log("welcome");
+    console.log("[INFO] Server welcomes you!");
     me = player;
     me.screenWidth = global.screenWidth;
     me.screenHeight = global.screenHeight;
     me.direction = window.canvas.direction;
-    global.gameStart = true;
     global.gameWidth = data.gameWidth;
     global.gameHeight = data.gameHeight;
     global.backSight = data.backSight;
@@ -98,14 +102,18 @@ function setupSocket(socket) {
     resize();
     c.focus();
 
-    socket.emit('gotit', global.playerName);
+    imgBlood = new Image();
+    imgBlood.src = './img/blood.png';
+    imgBlood.onload = function() {
+      global.gameStart = true;
+      socket.emit('gotit', global.playerName);
+    };
   });
 
   socket.on('serverTellPlayerMove', function(visiblePlayers, visibleAttacks, visibleBloods) {
     for (var i = 0; i < visiblePlayers.length; i++) {
       if (visiblePlayers[i].me) {
         me = visiblePlayers[i];
-        console.log(me.direction);
         break;
       }
     }
@@ -116,6 +124,7 @@ function setupSocket(socket) {
   });
 
   socket.on('serverTellPlayerDie', function() {
+    console.log("[INFO] You died!");
     global.gameStart = false;
     global.died = true;
     window.setTimeout(function() {
@@ -127,6 +136,26 @@ function setupSocket(socket) {
         global.animLoopHandle = undefined;
       }
     }, 2500);
+  });
+
+  socket.on('leaderboard', function (data) {
+    leaderboard = data.leaderboard;
+    var status = '<span class="title">Leaderboard</span>';
+    for (var i = 0; i < leaderboard.length; i++) {
+      status += '<br />';
+      if (leaderboard[i].me) {
+        if(leaderboard[i].name.length !== 0)
+          status += '<span class="me">' + (i + 1) + '. ' + leaderboard[i].name + ": "+ leaderboard[i].score +"</span>";
+        else
+          status += '<span class="me">' + (i + 1) + ". Anonymous player" + ": "+ leaderboard[i].score + "</span>";
+      } else {
+        if(leaderboard[i].name.length !== 0)
+            status += (i + 1) + '. ' + leaderboard[i].name + ": "+ leaderboard[i].score;
+        else
+            status += (i + 1) + '. Anonymous player' + ": "+ leaderboard[i].score;
+      }
+    }
+    document.getElementById('leaderboard').innerHTML = status;
   });
 }
 
@@ -159,7 +188,7 @@ function drawGrid() {
 function drawBoundary() {
   graph.lineWidth = 5;
   graph.strokeStyle = global.lineColor;
-  
+
   graph.beginPath();
   corners = [gameToScreen(0, 0),
              gameToScreen(0, global.gameHeight),
@@ -186,8 +215,35 @@ function drawPlayer(player) {
   graph.moveTo(corner1.x, corner1.y);
   graph.lineTo(corner2.x, corner2.y);
   graph.lineTo(corner3.x, corner3.y);
-  graph.fillStyle = "red";
+  if (player.me) {
+    graph.fillStyle = global.currentPlayerColor;
+  } else {
+    graph.fillStyle = global.playerColor;
+  }
   graph.fill();
+}
+
+function drawAttack(attack) {
+  var pos = gameToScreen(attack.x, attack.y);
+
+  graph.beginPath();
+  graph.arc(pos.x, pos.y, global.attackRadius, 0, 2 * Math.PI);
+  graph.fillStyle = global.attackColor;
+  graph.fill();
+}
+
+function drawBlood(blood) {
+  var pos = gameToScreen(blood.x, blood.y);
+
+  graph.globalAlpha = blood.opacity;
+  graph.save();
+
+  graph.translate(pos.x, pos.y);
+  graph.rotate(-me.direction);
+  graph.drawImage(imgBlood, -50, -50, 100, 100);
+
+  graph.restore();
+  graph.globalAlpha = 1;
 }
 
 function gameToScreen(x, y) {
@@ -195,7 +251,7 @@ function gameToScreen(x, y) {
   var dy = y - me.y;
   var sin = Math.sin(me.direction);
   var cos = Math.cos(me.direction);
-  
+
   var relX = dx * cos + dy * sin;
   var relY = dx * sin - dy * cos;
 
@@ -242,9 +298,9 @@ function gameLoop() {
       if (global.gameStart) {
         drawGrid();
         drawBoundary();
+        bloods.forEach(drawBlood);
+        attacks.forEach(drawAttack);
         players.forEach(drawPlayer);
-        // bloods.forEach(drawBlood);
-        // attacks.forEach(drawAttack);
       }
     } else {
       graph.fillStyle = '#333333';
@@ -273,6 +329,7 @@ window.addEventListener('resize', resize);
 function resize() {
   if (!socket) return;
 
+  console.log("[INFO] Window resized.");
   me.screenWidth = c.width = global.screenWidth = window.innerWidth;
   me.screenHeight = c.height = global.screenHeight = window.innerHeight;
 
