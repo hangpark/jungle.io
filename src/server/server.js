@@ -86,11 +86,11 @@ io.on('connection', function (socket) {
   });
 
   socket.on('playerSendRotate', function(rotate) {
-    currentPlayer.rotate = rotate;
+    currentPlayer.rotate = cfg.rotateConstant * rotate;
   });
 
   socket.on('playerSendSpeed', function(speed) {
-      currentPlayer.speed = speed;
+      currentPlayer.speed = cfg.speedConstant * speed;
   });
 
   socket.on('playerSendAttack', function() {
@@ -145,10 +145,10 @@ function checkAttack(attack) {
       entity.isDead = true;
       if(entity.type === 'human') {
         sockets[entity.id].emit('serverTellPlayerDie');
-        attack.attacker.score++;
+        attack.attacker.score += cfg.scoreKillPlayer;
         players = players.filter(function (p) { return !p.isDead; });
       } else { //player.type === 'computer'
-        attack.attacker.score -= 3;
+        attack.attacker.score += cfg.scoreKillAi;
         ais = ais.filter(function (a) { return !a.isDead; });
       }
     }
