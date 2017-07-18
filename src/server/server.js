@@ -42,13 +42,11 @@ var gameData = {
 };
 
 io.on('connection', function (socket) {
-  console.log("Somebody connected!", socket.handshake.query.type);
-  //type: human
-  var type = socket.handshake.query.type;
-  var position = util.randomPosition();
+  console.log("Somebody connected!");
 
   var currentPlayer = {
     id: socket.id,
+    type: 'human'
   };
 
   socket.on('respawn', function (screenWidth, screenHeight) {
@@ -70,6 +68,7 @@ io.on('connection', function (socket) {
     console.log('[INFO] Player ' + name + ' connected');
     sockets[currentPlayer.id] = socket;
 
+    var position = util.randomPosition();
     currentPlayer.name = name;
     currentPlayer.x = position.x;
     currentPlayer.y = position.y;
@@ -252,7 +251,6 @@ function gameLoop() {
       count: util.randomInRange(180,600),
     });
   }
-
 }
 
 function sendUpdates() {
