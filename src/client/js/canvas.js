@@ -21,7 +21,13 @@ class Canvas {
   updateKeyStatus(event) {
     var keyCode = event.which || event.keyCode;
     this.keys = (this.keys || []);
+    var prevKey = this.keys[keyCode];
     this.keys[keyCode] = (event.type == "keydown");
+
+    if (prevKey == this.keys[keyCode]) {
+      return;
+    }
+
     switch(keyCode) {
       case global.KEY_ATTACK:
         if (event.type == "keydown")
