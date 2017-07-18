@@ -24,7 +24,8 @@ class Canvas {
     this.keys[keyCode] = (event.type == "keydown");
     switch(keyCode) {
       case global.KEY_ATTACK:
-        this.socket.emit('playerSendAttack');
+        if (event.type == "keydown")
+          this.socket.emit('playerSendAttack');
         break;
       case global.KEY_RUN:
       case global.KEY_UP:
