@@ -165,7 +165,13 @@ function tickAi(ai) {
   //목표지 설정
   if(ai.count == 0 || util.distance(ai.x, ai.y, ai.targetX, ai.targetY) < 3) {
     ai.target = util.randomPosition();
-    ai.count = util.randomInRange(180, 600);
+    if(Math.random() > 0.89) {
+      ai.count = util.randomInRange(40, 120);
+      ai.speed = 0;
+    } else {
+      ai.count = util.randomInRange(180, 600);
+      ai.speed = 1;
+    }
   }
   ai.count--;
   //차벡터(ai -> target)
@@ -175,9 +181,9 @@ function tickAi(ai) {
   var angleToTarget = Math.atan2(targetY, targetX) + (Math.PI / 2);
   var deltaAngle = util.normalizeAngle(angleToTarget - ai.direction);
   //반시계방향으로 돌아야 할 때 적당히 회전시키고 그 반대면 반대로
-  if(deltaAngle > 0) {
+  if(deltaAngle > Math.PI / 60) {
     ai.direction = util.normalizeAngle(ai.direction + Math.PI / 180);
-  } else {
+  } else if (deltaAngle < - Math.PI / 60) {
     ai.direction = util.normalizeAngle(ai.direction - Math.PI / 180);
   }
 
