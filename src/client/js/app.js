@@ -186,7 +186,11 @@ function drawPlayer(player) {
   graph.moveTo(corner1.x, corner1.y);
   graph.lineTo(corner2.x, corner2.y);
   graph.lineTo(corner3.x, corner3.y);
-  graph.fillStyle = "red";
+  if (player.me) {
+    graph.fillStyle = global.currentPlayerColor;
+  } else {
+    graph.fillStyle = global.playerColor;
+  }
   graph.fill();
 }
 
