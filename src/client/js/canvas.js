@@ -41,7 +41,7 @@ class Canvas {
           if (this.keys[global.KEY_DOWN]) {
             speed = 0;
           } else if (this.keys[global.KEY_RUN]) {
-            speed = 2;
+            speed = 3;
           } else {
             speed = 1;
           }
